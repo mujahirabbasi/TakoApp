@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Tako App{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100 px-0">
+    <div class="row h-100 g-0">
+        <!-- Chat History Sidebar -->
+        <div class="col-md-3 border-end bg-light p-0">
+            <div class="d-flex flex-column h-100">
+                <div class="p-3 border-bottom">
+                    <h5 class="mb-0">Chat History</h5>
+                </div>
+                <div class="chat-history overflow-auto flex-grow-1">
+                    <div class="list-group list-group-flush">
+                        <a href="#" class="list-group-item list-group-item-action active">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">General Chat</h6>
+                                <small>3 mins ago</small>
+                            </div>
+                            <p class="mb-1">Last message preview...</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="col-md-9 d-flex flex-column h-100">
+            <!-- Chat Header -->
+            <div class="p-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Welcome, {{ username }}!</h5>
+                    <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div class="chat-messages p-3 overflow-auto flex-grow-1">
+                <!-- System Message -->
+                <div class="message system-message mb-3">
+                    <div class="message-content">
+                        <p class="mb-0">Welcome to Tako Chat! How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input p-3 border-top">
+                <form id="chat-form" class="d-flex">
+                    <input type="text" class="form-control me-2" placeholder="Type your message..." id="message-input" required>
+                    <button type="submit" class="btn btn-primary" id="send-button">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-messages {
+        height: calc(100vh - 200px);
+        background-color: #f8f9fa;
+    }
+    
+    .message {
+        max-width: 80%;
+        margin-bottom: 1rem;
+    }
+    
+    .message-content {
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+    }
+    
+    .user-message {
+        margin-left: auto;
+    }
+    
+    .user-message .message-content {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .bot-message {
+        margin-right: auto;
+    }
+    
+    .bot-message .message-content {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    
+    .system-message {
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .system-message .message-content {
+        background-color: #e9ecef;
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    .chat-history {
+        height: calc(100vh - 60px);
+    }
+    
+    .chat-input {
+        background-color: white;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+    }
+
+    .list-group-item.active {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 3px solid #007bff;
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .sources {
+        font-size: 0.8em;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+
+    .sources-title {
+        margin-top: 0.5em;
+        font-weight: bold;
+        color: #007bff;
+    }
+
+    .sources-list {
+        margin: 0.25em 0 0 1.5em;
+        padding: 0;
+        color: #555;
+        font-size: 0.95em;
+    }
+</style>
+
+<!-- Add Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+document.getElementById('chat-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const input = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const message = input.value.trim();
+    
+    if (message) {
+        // Disable input and show loading state
+        input.disabled = true;
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<div class="loading"></div> Processing...';
+        
+        // Add user message to chat
+        const messagesArea = document.querySelector('.chat-messages');
+        const userMessage = document.createElement('div');
+        userMessage.className = 'message user-message mb-3';
+        userMessage.innerHTML = `
+            <div class="message-content">
+                <p class="mb-0">${message}</p>
+            </div>
+        `;
+        messagesArea.appendChild(userMessage);
+        
+        // Clear input
+        input.value = '';
+        
+        try {
+            // Send message to backend
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: message })
+            });
+            
+            const data = await response.json();
+            
+            // Add bot response to chat
+            const botMessage = document.createElement('div');
+            botMessage.className = 'message bot-message mb-3';
+            
+            let sourcesHtml = '';
+            if (data.sources) {
+                // If sources is a string, split by newlines and dashes
+                let sourcesList = [];
+                if (typeof data.sources === 'string') {
+                    sourcesList = data.sources
+                        .replace(/^Sources:/, '')
+                        .split('\n')
+                        .map(line => line.replace(/^- /, '').trim())
+                        .filter(line => line.length > 0);
+                } else if (Array.isArray(data.sources)) {
+                    sourcesList = data.sources;
+                }
+                if (sourcesList.length > 0) {
+                    sourcesHtml = `<div class="sources-title"><b>Sources:</b></div><ul class="sources-list">` +
+                        sourcesList.map(src => `<li>${src}</li>`).join('') +
+                        `</ul>`;
+                }
+            }
+
+            botMessage.innerHTML = `
+                <div class="message-content">
+                    <p class="mb-0">${data.answer}</p>
+                    ${sourcesHtml}
+                </div>
+            `;
+            messagesArea.appendChild(botMessage);
+        } catch (error) {
+            // Add error message
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'message system-message mb-3';
+            errorMessage.innerHTML = `
+                <div class="message-content">
+                    <p class="mb-0">Sorry, there was an error processing your request. Please try again.</p>
+                </div>
+            `;
+            messagesArea.appendChild(errorMessage);
+        } finally {
+            // Re-enable input and reset button
+            input.disabled = false;
+            sendButton.disabled = false;
+            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+            
+            // Scroll to bottom
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+    }
+});
+</script>
+{% endblock %} 
