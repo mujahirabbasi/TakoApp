@@ -81,7 +81,7 @@ def initialize_embeddings():
     embedding = OllamaEmbeddings(model="llama2")
     db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../db")
     db_dir = os.path.abspath(db_dir)
-    docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../docs")
+    docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
     docs_dir = os.path.abspath(docs_dir)
 
     from agent.utils.compute_embeddings import split_markdown_sections

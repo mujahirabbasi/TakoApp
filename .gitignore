@@ -10,4 +10,5 @@ __pycache__/
 
 # Local development
 .DS_Store
-db/
+agent/db/
+
