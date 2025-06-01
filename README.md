@@ -38,6 +38,93 @@ The system is designed to handle queries about:
    - Interface documentation
    - Operating systems
 
+## 🏗️ System Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│  FastAPI Server │────▶│  LangChain      │────▶│  Ollama LLM     │
+│                 │     │  Agent          │     │                 │
+└────────┬────────┘     └────────┬────────┘     └─────────────────┘
+         │                       │
+         │                       │
+         ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │
+│  MySQL Database │     │  ChromaDB       │
+│                 │     │  Vector Store   │
+└─────────────────┘     └─────────────────┘
+```
+
+### Component Interaction Flow
+
+1. **User Request Flow**:
+   ```
+   User Request → FastAPI → Authentication → LangChain Agent → Response
+   ```
+
+2. **Document Processing Flow**:
+   ```
+   Markdown Docs → Text Splitter → Embeddings → ChromaDB Storage
+   ```
+
+3. **Query Processing Flow**:
+   ```
+   User Query → Semantic Search → Document Retrieval → LLM Processing → Response
+   ```
+
+## 📊 Database Schema
+
+### Users Table
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Conversations Table
+```sql
+CREATE TABLE conversations (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(100) DEFAULT 'New Conversation',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### Messages Table
+```sql
+CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    conversation_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    sources JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+```
+
+### Entity Relationship Diagram
+```
+┌──────────┐       ┌───────────────┐       ┌──────────┐
+│  Users   │       │ Conversations │       │ Messages │
+├──────────┤       ├───────────────┤       ├──────────┤
+│ id       │       │ user_id       │       │ conv_id  │
+│ username │       │ title         │       │ content  │
+│ email    │◄──────┤ created_at    │       │ role     │
+│ password │       │ updated_at    │       │ sources  │
+│ created  │       │               │       │ created  │
+└──────────┘       └───────────────┘       │ updated  │
+                                           └──────────┘
+```
+
 ## 🛠️ Technology Stack
 
 - **Backend**: FastAPI, SQLAlchemy
