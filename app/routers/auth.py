@@ -17,11 +17,12 @@ class UserCreate(BaseModel):
     password: str
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, success: str = None):
+async def login_page(request: Request, error: str = None, success: str = None):
     return templates.TemplateResponse(
         "login.html",
         {
             "request": request,
+            "error": error,
             "success": success
         }
     )
@@ -32,15 +33,15 @@ async def login(request: Request, username: str = Form(...), password: str = For
     if not user:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Username not found"}
+            {"request": request, "error": "User does not exist. Please check your username or register."}
         )
-    
     if not verify_password(password, user.password):
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Incorrect password"}
+            {"request": request, "error": "Incorrect password. Please try again."}
         )
-    
+    # Set the session
+    request.session["username"] = user.username
     return RedirectResponse(url=f"/welcome?username={user.username}", status_code=303)
 
 @router.get("/register", response_class=HTMLResponse)
@@ -90,7 +91,7 @@ async def register(
     db.refresh(new_user)
     
     # Redirect to login page with success message
-    return RedirectResponse(url="/login?registered=true", status_code=303)
+    return RedirectResponse(url="/login?success=Registration successful. Please log in.", status_code=303)
 
 @router.get("/logout")
 async def logout():

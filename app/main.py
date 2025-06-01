@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, HTTPException, Depends
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +19,9 @@ from app.auth.auth import get_current_user
 import os
 import openai
 from pathlib import Path
+from starlette.middleware.sessions import SessionMiddleware
+import secrets
+
 
 app = FastAPI()
 
@@ -35,6 +38,7 @@ app.mount(
     name="static"
 )
 
+app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -123,4 +127,23 @@ async def ask_question_post(question: Question):
             status_code=500,
             content={"error": f"Error processing question: {str(e)}"}
         )
+
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    username = request.session.get("username")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        # Pass the error message as a query parameter
+        return RedirectResponse(url=f"/login?error={exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 

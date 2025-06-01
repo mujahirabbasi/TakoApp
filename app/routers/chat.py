@@ -9,6 +9,8 @@ from app.auth.auth import get_current_user
 from app.models.user import User
 from agent.kb_agent import run_custom_agent, initialize_ollama, initialize_embeddings, create_retriever_tool, create_web_search_tool
 from langchain.chains import RetrievalQA
+from datetime import datetime
+from starlette.middleware.sessions import SessionMiddleware
 
 router = APIRouter()
 
@@ -93,7 +95,10 @@ async def chat(
                 if not conversation:
                     raise HTTPException(status_code=404, detail="Conversation not found")
             else:
-                conversation = Conversation(user_id=current_user.id)
+                conversation = Conversation(
+                    user_id=current_user.id,
+                    created_at=datetime.utcnow()
+                )
                 db.add(conversation)
                 db.commit()
                 db.refresh(conversation)
@@ -214,14 +219,20 @@ async def chat(
             )
 
         # Generate title if this is the first message
-        if len(conversation.messages) == 2:  # User message + AI response
+        msg_count = db.query(Message).filter(Message.conversation_id == conversation.id).count()
+        if msg_count == 2:
             try:
-                title_prompt = f"Generate a short, descriptive title (max 5 words) for this conversation:\nUser: {message}\nAssistant: {answer}"
-                title_response = llm.invoke(title_prompt)
+                title_prompt = f"Generate a short, concise title (max 5 words) for this conversation: {message}"
+                title_response = run_custom_agent(title_prompt, tools, llm, retriever)
+
+                print ("title_response : ", title_response)
                 
                 # Extract just the title text from the response
                 if isinstance(title_response, dict):
                     title = title_response.get('answer', '')
+                    # If the answer is an AIMessage, extract its content
+                    if hasattr(title, 'content'):
+                        title = title.content
                 elif hasattr(title_response, 'content'):
                     title = title_response.content
                 else:

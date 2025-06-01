@@ -8,8 +8,9 @@
         <!-- Chat History Sidebar -->
         <div class="col-md-3 border-end bg-light p-0">
             <div class="d-flex flex-column h-100">
-                <div class="p-3 border-bottom">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Chat History</h5>
+                    <button id="new-chat-btn" class="btn btn-success btn-sm">+ New Chat</button>
                 </div>
                 <div class="chat-history overflow-auto flex-grow-1">
                     <div class="list-group list-group-flush" id="conversation-list">
@@ -26,10 +27,8 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="mb-0">Welcome, {{ username }}!</h5>
-                        <small class="text-muted">Choose your chat mode:</small>
                     </div>
                     <div>
-                        <a href="/chat" class="btn btn-primary me-2">AI Chat</a>
                         <a href="/logout" class="btn btn-danger">Logout</a>
                     </div>
                 </div>
@@ -155,6 +154,13 @@
         color: #555;
         font-size: 0.95em;
     }
+
+    .generating-message {
+        color: #343a40;
+        font-size: 1rem;
+        font-weight: bold;
+        opacity: 0.85;
+    }
 </style>
 
 <!-- Add Font Awesome for icons -->
@@ -167,6 +173,16 @@ let currentConversationId = null;
 async function loadConversations() {
     try {
         const response = await fetch('/api/conversations');
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        // If response is not JSON, don't try to parse it
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            window.location.href = '/login';
+            return;
+        }
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -305,6 +321,10 @@ document.getElementById('chat-form').addEventListener('submit', async function(e
     addMessageToChat('user', message);
     messageInput.value = '';
 
+    // Show "Generating..." message
+    const generatingMsgId = 'generating-msg';
+    addMessageToChat('assistant', '<span class="generating-message">Generating...</span>', generatingMsgId);
+
     try {
         const formData = new FormData();
         formData.append('message', message);
@@ -320,6 +340,9 @@ document.getElementById('chat-form').addEventListener('submit', async function(e
         });
 
         if (!response.ok) {
+            // Remove the "Generating..." message
+            const genMsg = document.getElementById(generatingMsgId);
+            if (genMsg) genMsg.remove();
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
@@ -364,23 +387,31 @@ document.getElementById('chat-form').addEventListener('submit', async function(e
         }
 
         console.log('Final message to display:', formattedMessage);
+        // Remove the "Generating..." message
+        const genMsg = document.getElementById(generatingMsgId);
+        if (genMsg) genMsg.remove();
         addMessageToChat('assistant', formattedMessage);
 
+        // Refresh the conversation list to update titles
+        await loadConversations();
+
     } catch (error) {
+        // Remove the "Generating..." message
+        const genMsg = document.getElementById(generatingMsgId);
+        if (genMsg) genMsg.remove();
         console.error('Error sending message:', error);
         console.error('Error details:', error.message);
         addMessageToChat('assistant', 'Sorry, there was an error processing your message. Please try again.');
     }
 });
 
-function addMessageToChat(role, content) {
+function addMessageToChat(role, content, id = null) {
     const messagesDiv = document.getElementById('messages-area');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message mb-3`;
-    
+    if (id) messageDiv.id = id;
     // Ensure content is a string
     let formattedContent = String(content || '');
-    
     // Format the message content
     if (role === 'assistant') {
         // Convert markdown-style formatting
@@ -388,18 +419,25 @@ function addMessageToChat(role, content) {
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
             .replace(/\n/g, '<br>');  // Line breaks
     }
-    
     messageDiv.innerHTML = `
         <div class="message-content">
             ${formattedContent}
         </div>
     `;
-    
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 // Load conversations when page loads
 document.addEventListener('DOMContentLoaded', loadConversations);
+
+// Add event listener for New Chat button
+document.getElementById('new-chat-btn').addEventListener('click', async function() {
+    // Start a new chat by clearing the chat area and creating a new conversation
+    currentConversationId = null;
+    document.getElementById('messages-area').innerHTML = '';
+    // Optionally, you can also reload conversations to show the new chat at the top
+    await loadConversations();
+});
 </script>
 {% endblock %} 

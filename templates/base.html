@@ -39,6 +39,21 @@
             padding: 1rem 0;
             background-color: #f8f9fa;
         }
+        /* Global button color overrides */
+        .btn-primary,
+        .btn-success,
+        .btn-danger {
+            background-color: #e0e0e0 !important;
+            border-color: #e0e0e0 !important;
+            color: #333 !important;
+        }
+        .btn-primary:hover,
+        .btn-success:hover,
+        .btn-danger:hover {
+            background-color: #bdbdbd !important;
+            border-color: #bdbdbd !important;
+            color: #222 !important;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
