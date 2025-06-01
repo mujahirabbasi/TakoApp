@@ -16,29 +16,15 @@ router = APIRouter()
 
 # Initialize KB Agent components
 try:
-    print("[DEBUG] Initializing Ollama...")
     initialize_ollama()
-    print("[DEBUG] Ollama initialized.")
-    print("[DEBUG] Initializing embeddings...")
     vectorstore = initialize_embeddings()
-    print(f"[DEBUG] Vectorstore: {vectorstore}")
-    print("[DEBUG] Setting up retriever...")
     retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
-    print(f"[DEBUG] Retriever: {retriever}")
-    print("[DEBUG] Loading LLM...")
     llm = ChatOllama(model="llama2", temperature=0)
-    print(f"[DEBUG] LLM: {llm}")
-    print("[DEBUG] Setting up retrieval chain...")
     retrieval_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-    print(f"[DEBUG] Retrieval chain: {retrieval_chain}")
     retriever_tool = create_retriever_tool(retrieval_chain)
-    print(f"[DEBUG] Retriever tool: {retriever_tool}")
     web_search_tool = create_web_search_tool()
-    print(f"[DEBUG] Web search tool: {web_search_tool}")
     tools = [retriever_tool, web_search_tool]
-    print("[DEBUG] Knowledge Base Agent initialized successfully.")
 except Exception as e:
-    print(f"[ERROR] Error initializing KB Agent: {str(e)}")
     tools = None
     llm = None
     retriever = None
@@ -64,7 +50,6 @@ def generate_title(message: str) -> str:
             
         return title if title else "New Conversation"
     except Exception as e:
-        print(f"Error generating title: {str(e)}")
         return "New Conversation"
 
 @router.post("/chat")
@@ -79,7 +64,6 @@ async def chat(
     try:
         # Check if KB Agent components are initialized
         if not tools or not llm or not retriever:
-            print("[ERROR] KB Agent components not initialized")
             raise HTTPException(
                 status_code=500,
                 detail="The AI system is not properly initialized. Please try again in a few moments."
@@ -103,7 +87,6 @@ async def chat(
                 db.commit()
                 db.refresh(conversation)
         except Exception as e:
-            print(f"[ERROR] Database error while handling conversation: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail="Error accessing conversation history. Please try again."
@@ -119,7 +102,6 @@ async def chat(
             db.add(user_message)
             db.commit()
         except Exception as e:
-            print(f"[ERROR] Database error while saving user message: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail="Error saving your message. Please try again."
@@ -134,7 +116,6 @@ async def chat(
                 retriever
             )
         except Exception as e:
-            print(f"[ERROR] AI response generation failed: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail="The AI system encountered an error while processing your question. Please try rephrasing your question or try again later."
@@ -142,10 +123,6 @@ async def chat(
 
         # Extract content from response
         try:
-            print(f"[DEBUG] Response type: {type(response)}")
-            print(f"[DEBUG] Response attributes: {dir(response)}")
-            print(f"[DEBUG] Response: {response}")
-            
             if isinstance(response, dict):
                 # Extract content from dictionary response
                 if 'answer' in response:
@@ -171,9 +148,6 @@ async def chat(
             else:
                 # Handle LangChain message object
                 if hasattr(response, 'content'):
-                    print(f"[DEBUG] Response content type: {type(response.content)}")
-                    print(f"[DEBUG] Response content: {response.content}")
-                    # Handle different content types
                     if isinstance(response.content, str):
                         answer = response.content
                     elif hasattr(response.content, 'content'):
@@ -181,21 +155,14 @@ async def chat(
                     else:
                         answer = str(response.content)
                 else:
-                    print(f"[DEBUG] No content attribute found, using str(response)")
                     answer = str(response)
                 sources = []
-
-            print(f"[DEBUG] Extracted answer: {answer}")
-            print(f"[DEBUG] Answer type: {type(answer)}")
 
             if not answer:
                 raise ValueError("Empty response from AI system")
 
         except Exception as e:
-            print(f"[ERROR] Error processing AI response: {str(e)}")
-            print(f"[ERROR] Error type: {type(e)}")
             import traceback
-            print(f"[ERROR] Traceback: {traceback.format_exc()}")
             raise HTTPException(
                 status_code=500,
                 detail="Error processing the AI response. Please try again."
@@ -212,7 +179,6 @@ async def chat(
             db.add(ai_message)
             db.commit()
         except Exception as e:
-            print(f"[ERROR] Database error while saving AI response: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail="Error saving the AI response. Please try again."
@@ -225,8 +191,6 @@ async def chat(
                 title_prompt = f"Generate a short, concise title (max 5 words) for this conversation: {message}"
                 title_response = run_custom_agent(title_prompt, tools, llm, retriever)
 
-                print ("title_response : ", title_response)
-                
                 # Extract just the title text from the response
                 if isinstance(title_response, dict):
                     title = title_response.get('answer', '')
@@ -260,7 +224,6 @@ async def chat(
                 conversation.title = title
                 db.commit()
             except Exception as e:
-                print(f"[ERROR] Error generating title: {str(e)}")
                 conversation.title = "New Conversation"
                 db.commit()
 
@@ -273,7 +236,6 @@ async def chat(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] Unexpected error in chat endpoint: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred. Please try again later."
@@ -299,7 +261,6 @@ async def get_conversations(
         
         return conversations
     except Exception as e:
-        print(f"Error getting conversations: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Error retrieving conversations"
@@ -329,7 +290,6 @@ async def get_conversation(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error getting conversation: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Error retrieving conversation"
@@ -359,7 +319,6 @@ async def get_conversation_messages(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error getting messages: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Error retrieving messages"

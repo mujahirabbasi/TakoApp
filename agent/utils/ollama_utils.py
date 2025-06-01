@@ -44,13 +44,10 @@ def check_ollama_availability():
 
 def wait_for_ollama(timeout=60):
     """Wait for Ollama to become available."""
-    print("Checking for Ollama availability...")
     start_time = time.time()
     while time.time() - start_time < timeout:
         if check_ollama_availability():
-            print("Ollama is running!")
             return True
-        print("Waiting for Ollama to start...")
         time.sleep(5)
     return False
 
@@ -61,12 +58,7 @@ def check_and_pull_model(model_name="llama2"):
         models = response.json().get("models", [])
         model_exists = any(model["name"] == model_name for model in models)
         if not model_exists:
-            print(f"Model {model_name} not found. Pulling it now...")
             ollama_path = get_ollama_path()
             subprocess.run([ollama_path, "pull", model_name], check=True)
-            print(f"Successfully pulled {model_name} model!")
-        else:
-            print(f"Model {model_name} is already available.")
     except Exception as e:
-        print(f"Error checking/pulling model: {e}")
         raise 

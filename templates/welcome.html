@@ -218,7 +218,6 @@ async function loadConversations() {
             conversationList.appendChild(item);
         });
     } catch (error) {
-        console.error('Error loading conversations:', error);
         const conversationList = document.getElementById('conversation-list');
         conversationList.innerHTML = `
             <div class="text-center text-danger p-3">
@@ -240,14 +239,11 @@ async function loadConversation(conversationId) {
         messages.forEach(message => {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${message.role}-message mb-3`;
-            
             let contentHtml = message.content;
-            
             // Convert markdown-style formatting to HTML
             contentHtml = contentHtml
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
                 .replace(/\n/g, '<br>');  // Line breaks
-            
             messageDiv.innerHTML = `
                 <div class="message-content">
                     ${contentHtml}
@@ -255,10 +251,8 @@ async function loadConversation(conversationId) {
             `;
             messagesArea.appendChild(messageDiv);
         });
-        
         // Scroll to bottom
         messagesArea.scrollTop = messagesArea.scrollHeight;
-        
         // Update active conversation in sidebar
         document.querySelectorAll('#conversation-list .list-group-item').forEach(item => {
             item.classList.remove('active');
@@ -267,7 +261,7 @@ async function loadConversation(conversationId) {
             }
         });
     } catch (error) {
-        console.error('Error loading conversation:', error);
+        // Optionally handle error
     }
 }
 
@@ -278,29 +272,22 @@ function addConversationToSidebar(conversation) {
     conversationItem.className = 'list-group-item list-group-item-action';
     conversationItem.setAttribute('data-conversation-id', conversation.id);
     conversationItem.onclick = () => loadConversation(conversation.id);
-    
     // Create title element
     const title = document.createElement('div');
     title.className = 'd-flex w-100 justify-content-between';
-    
     const titleText = document.createElement('h6');
     titleText.className = 'mb-1';
     titleText.textContent = conversation.title || 'New Conversation';
-    
     // Create date element
     const date = document.createElement('small');
     date.className = 'text-muted';
     date.textContent = new Date(conversation.updated_at).toLocaleString();
-    
     // Add elements to conversation item
     title.appendChild(titleText);
     title.appendChild(date);
-    
     conversationItem.appendChild(title);
-    
     // Add to sidebar at the top
     sidebar.insertBefore(conversationItem, sidebar.firstChild);
-    
     // Update active conversation
     document.querySelectorAll('.list-group-item').forEach(item => {
         item.classList.remove('active');
@@ -308,116 +295,17 @@ function addConversationToSidebar(conversation) {
     conversationItem.classList.add('active');
 }
 
-// Handle form submission
-document.getElementById('chat-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const messageInput = document.getElementById('message-input');
-    const message = messageInput.value.trim();
-    if (!message) return;
-
-    console.log('Sending message:', message);
-
-    // Add user message to chat
-    addMessageToChat('user', message);
-    messageInput.value = '';
-
-    // Show "Generating..." message
-    const generatingMsgId = 'generating-msg';
-    addMessageToChat('assistant', '<span class="generating-message">Generating...</span>', generatingMsgId);
-
-    try {
-        const formData = new FormData();
-        formData.append('message', message);
-        if (currentConversationId) {
-            formData.append('conversation_id', currentConversationId);
-        }
-
-        console.log('Sending request to /api/chat...');
-
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            // Remove the "Generating..." message
-            const genMsg = document.getElementById(generatingMsgId);
-            if (genMsg) genMsg.remove();
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Raw server response:', data);
-        
-        // Update active conversation if this is a new one
-        if (!currentConversationId) {
-            currentConversationId = data.conversation_id;
-            console.log('New conversation ID:', currentConversationId);
-            // Add the new conversation to the sidebar
-            const conversation = {
-                id: data.conversation_id,
-                title: "New Conversation",
-                updated_at: new Date().toISOString()
-            };
-            addConversationToSidebar(conversation);
-        }
-
-        // Extract message content from LangChain message object
-        let formattedMessage = '';
-        if (data.message) {
-            if (typeof data.message === 'string') {
-                formattedMessage = data.message;
-            } else if (data.message.content) {
-                formattedMessage = data.message.content;
-            } else {
-                console.error('Unexpected message format:', data.message);
-                formattedMessage = 'Error: Unexpected message format from server';
-            }
-        }
-
-        console.log('Extracted message content:', formattedMessage);
-
-        // Add sources if available
-        if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
-            console.log('Adding sources:', data.sources);
-            formattedMessage += "\n\n**Sources:**\n";
-            data.sources.forEach((source, index) => {
-                formattedMessage += `${index + 1}. ${source}\n`;
-            });
-        }
-
-        console.log('Final message to display:', formattedMessage);
-        // Remove the "Generating..." message
-        const genMsg = document.getElementById(generatingMsgId);
-        if (genMsg) genMsg.remove();
-        addMessageToChat('assistant', formattedMessage);
-
-        // Refresh the conversation list to update titles
-        await loadConversations();
-
-    } catch (error) {
-        // Remove the "Generating..." message
-        const genMsg = document.getElementById(generatingMsgId);
-        if (genMsg) genMsg.remove();
-        console.error('Error sending message:', error);
-        console.error('Error details:', error.message);
-        addMessageToChat('assistant', 'Sorry, there was an error processing your message. Please try again.');
-    }
-});
-
+// Add a message to the chat window
 function addMessageToChat(role, content, id = null) {
     const messagesDiv = document.getElementById('messages-area');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message mb-3`;
     if (id) messageDiv.id = id;
-    // Ensure content is a string
     let formattedContent = String(content || '');
-    // Format the message content
     if (role === 'assistant') {
-        // Convert markdown-style formatting
         formattedContent = formattedContent
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
-            .replace(/\n/g, '<br>');  // Line breaks
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
     }
     messageDiv.innerHTML = `
         <div class="message-content">
@@ -428,15 +316,84 @@ function addMessageToChat(role, content, id = null) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+// Handle form submission
+// Organized for clarity: user message, loading, fetch, response, error
+
+// Chat form submission
+const chatForm = document.getElementById('chat-form');
+chatForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+    if (!message) return;
+    addMessageToChat('user', message);
+    messageInput.value = '';
+    // Show "Generating..." message
+    const generatingMsgId = 'generating-msg';
+    addMessageToChat('assistant', '<span class="generating-message">Generating...</span>', generatingMsgId);
+    try {
+        const formData = new FormData();
+        formData.append('message', message);
+        if (currentConversationId) {
+            formData.append('conversation_id', currentConversationId);
+        }
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            body: formData
+        });
+        if (!response.ok) {
+            const genMsg = document.getElementById(generatingMsgId);
+            if (genMsg) genMsg.remove();
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!currentConversationId) {
+            currentConversationId = data.conversation_id;
+            const conversation = {
+                id: data.conversation_id,
+                title: "New Conversation",
+                updated_at: new Date().toISOString()
+            };
+            addConversationToSidebar(conversation);
+        }
+        let formattedMessage = '';
+        if (data.message) {
+            if (typeof data.message === 'string') {
+                formattedMessage = data.message;
+            } else if (data.message.content) {
+                formattedMessage = data.message.content;
+            } else {
+                formattedMessage = 'Error: Unexpected message format from server';
+            }
+        }
+        if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
+            formattedMessage += "\n\n**Sources:**\n";
+            data.sources.forEach((source, index) => {
+                formattedMessage += `${index + 1}. ${source}\n`;
+            });
+        }
+        const genMsg = document.getElementById(generatingMsgId);
+        if (genMsg) genMsg.remove();
+        addMessageToChat('assistant', formattedMessage);
+        await loadConversations();
+    } catch (error) {
+        const genMsg = document.getElementById(generatingMsgId);
+        if (genMsg) genMsg.remove();
+        addMessageToChat('assistant', 'Sorry, there was an error processing your message. Please try again.');
+    }
+});
+
 // Load conversations when page loads
+// Organized for clarity
+
+// On page load
 document.addEventListener('DOMContentLoaded', loadConversations);
 
-// Add event listener for New Chat button
-document.getElementById('new-chat-btn').addEventListener('click', async function() {
-    // Start a new chat by clearing the chat area and creating a new conversation
+// New Chat button
+const newChatBtn = document.getElementById('new-chat-btn');
+newChatBtn.addEventListener('click', async function() {
     currentConversationId = null;
     document.getElementById('messages-area').innerHTML = '';
-    // Optionally, you can also reload conversations to show the new chat at the top
     await loadConversations();
 });
 </script>

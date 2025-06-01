@@ -35,7 +35,6 @@ def compute_and_store_embeddings(embedding_model="llama2"):
     docs_dir = os.path.abspath(docs_dir)
     db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../db")
     db_dir = os.path.abspath(db_dir)
-    print(f"📂 Reading markdown files from: {docs_dir}")
 
     markdown_files = [f for f in os.listdir(docs_dir) if f.endswith(".md")]
     all_docs = []
@@ -44,16 +43,12 @@ def compute_and_store_embeddings(embedding_model="llama2"):
         file_path = os.path.join(docs_dir, doc_file)
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
-
-        print(f"✅ Loaded: {doc_file} ({len(text)} characters)")
         chunks = split_markdown_sections(text, doc_file)
-        print(f"🔍 Split into {len(chunks)} chunks")
         all_docs.extend(chunks)
 
     if not all_docs:
         raise ValueError("No documents loaded.")
 
-    print(f"📦 Total chunks to embed: {len(all_docs)}")
     os.makedirs(db_dir, exist_ok=True)
 
     current_hash = compute_document_hash(all_docs)
@@ -67,7 +62,6 @@ def compute_and_store_embeddings(embedding_model="llama2"):
     )
 
     save_document_hash(current_hash)
-    print("✅ Embeddings saved to vectorstore.")
 
     return vectorstore
 

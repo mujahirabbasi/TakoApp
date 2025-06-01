@@ -77,7 +77,6 @@ def initialize_ollama():
 
 def initialize_embeddings():
     """Initialize or load the vector store, only recompute if docs changed."""
-    print("Initializing Ollama models...")
     embedding = OllamaEmbeddings(model="llama2")
     db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../db")
     db_dir = os.path.abspath(db_dir)
@@ -98,19 +97,13 @@ def initialize_embeddings():
         all_docs.extend(chunks)
     current_hash = compute_document_hash(all_docs)
     saved_hash = load_document_hash()
-    
-    print(f"[DEBUG] Current document hash: {current_hash}")
-    print(f"[DEBUG] Saved document hash: {saved_hash}")
-    print(f"[DEBUG] Hashes match: {current_hash == saved_hash}")
 
     if current_hash == saved_hash:
-        print("Loading existing vectorstore from database...")
         return Chroma(
             persist_directory=db_dir,
             embedding_function=embedding
         )
     else:
-        print("Documents changed. Computing embeddings...")
         vectorstore = compute_and_store_embeddings()
         save_document_hash(current_hash)
         return vectorstore
@@ -166,47 +159,33 @@ def route_question(question, retriever):
 
     if has_relevant_docs:
         if has_doc_keywords:
-            print("\n📚 Found relevant documents and matching keywords")
+            pass
         else:
-            print("\n📚 Found relevant documents (no keywords matched)")
+            pass
         return "Document Retriever", relevant_docs
     
     if needs_current_info:
-        print("\n🌐 Question requires current information")
         return "Web Search", []
     
-    print("\n🤖 Using LLM for general knowledge")
     return "Final Answer", []
 
 def run_custom_agent(question, tools, llm, retriever):
     """Run the appropriate tool based on the question routing."""
     tool_choice, relevant_docs = route_question(question, retriever)
-    print(f"\n🔧 Using tool: {tool_choice}")
 
     if tool_choice == "Document Retriever":
         try:
             # Get relevant documents
             relevant_docs = retriever.invoke(question)
-            print(f"\n📚 Retrieved {len(relevant_docs)} documents")
-            
             # Sort documents by relevance to question
             relevant_docs.sort(key=lambda x: len(set(question.lower().split()) & 
                                                 set(x.metadata.get('header', '').lower().split())), 
                              reverse=True)
-            
-            print("\n📄 Documents used:")
-            for i, doc in enumerate(relevant_docs, 1):
-                print(f"{i}. Source: {doc.metadata.get('source')}")
-                print(f"   Section: {doc.metadata.get('header')}")
-                print(f"   Content preview: {doc.page_content[:100]}...")
-            
             # Get answer from retrieval chain
             answer = tools[0].func(question)
-            
             # Format answer with sources
             return format_answer_with_sources(answer, relevant_docs)
         except Exception as e:
-            print("Document retrieval failed, falling back to LLM...")
             return {
                 "answer": llm.invoke(question),
                 "sources": []
@@ -219,7 +198,6 @@ def run_custom_agent(question, tools, llm, retriever):
                 "sources": []
             }
         except Exception as e:
-            print("LLM generation failed, falling back to web...")
             return {
                 "answer": tools[1].func(question),
                 "sources": ["Web Search"]
@@ -260,16 +238,11 @@ def main():
         tools=tools,
         llm=llm,
         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True,
+        verbose=False,
         max_iterations=5,
         early_stopping_method="generate",
         handle_parsing_errors=True
     )
-
-    # Main interaction loop
-    print("\nKnowledge Base Agent is ready! You can start asking questions.")
-    print("\nCommands:")
-    print("  - Type 'exit' to quit")
 
     while True:
         question = input("\nAsk a question or enter a command: ")
@@ -308,5 +281,4 @@ def format_answer_with_sources(answer, docs):
     }
 
 if __name__ == "__main__":
-    os.environ['LANGCHAIN_VERBOSE'] = 'true'
     main()

@@ -55,29 +55,15 @@ class Question(BaseModel):
 
 # Initialize KB Agent components
 try:
-    print("[DEBUG] Initializing Ollama...")
     initialize_ollama()
-    print("[DEBUG] Ollama initialized.")
-    print("[DEBUG] Initializing embeddings...")
     vectorstore = initialize_embeddings()
-    print(f"[DEBUG] Vectorstore: {vectorstore}")
-    print("[DEBUG] Setting up retriever...")
     retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
-    print(f"[DEBUG] Retriever: {retriever}")
-    print("[DEBUG] Loading LLM...")
     llm = ChatOllama(model="llama2", temperature=0)
-    print(f"[DEBUG] LLM: {llm}")
-    print("[DEBUG] Setting up retrieval chain...")
     retrieval_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-    print(f"[DEBUG] Retrieval chain: {retrieval_chain}")
     retriever_tool = create_retriever_tool(retrieval_chain)
-    print(f"[DEBUG] Retriever tool: {retriever_tool}")
     web_search_tool = create_web_search_tool()
-    print(f"[DEBUG] Web search tool: {web_search_tool}")
     tools = [retriever_tool, web_search_tool]
-    print("[DEBUG] Knowledge Base Agent initialized successfully.")
 except Exception as e:
-    print(f"[ERROR] Error initializing KB Agent: {str(e)}")
     tools = None
     llm = None
     retriever = None
