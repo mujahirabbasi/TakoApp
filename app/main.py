@@ -14,23 +14,37 @@ from langchain_community.chat_models import ChatOllama
 from langchain.chains import RetrievalQA
 from app.database import get_db, engine
 from app.models.user import User, Base
-from app.routers import auth
+from app.routers import auth, chat
+from app.auth.auth import get_current_user
 import os
+import openai
+from pathlib import Path
 
 app = FastAPI()
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Use this for templates
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# Mount static files
+app.mount(
+    "/static",
+    StaticFiles(directory=str(BASE_DIR / "static")),
+    name="static"
+)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Templates
-templates = Jinja2Templates(directory="templates")
 
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBasic()
+
+# Set OpenAI API key
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class Question(BaseModel):
     question: str
@@ -64,8 +78,9 @@ except Exception as e:
     llm = None
     retriever = None
 
-# Include auth router
+# Include routers
 app.include_router(auth.router)
+app.include_router(chat.router, prefix="/api", tags=["chat"])
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -74,6 +89,10 @@ async def root(request: Request):
 @app.get("/welcome", response_class=HTMLResponse)
 async def welcome(request: Request, username: str):
     return templates.TemplateResponse("welcome.html", {"request": request, "username": username})
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat(request: Request, current_user: User = Depends(get_current_user)):
+    return templates.TemplateResponse("chat.html", {"request": request, "username": current_user.username})
 
 @app.post("/ask")
 async def ask_question_post(question: Question):
@@ -105,5 +124,3 @@ async def ask_question_post(question: Question):
             content={"error": f"Error processing question: {str(e)}"}
         )
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000) 

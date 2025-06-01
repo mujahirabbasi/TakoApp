@@ -12,14 +12,8 @@
                     <h5 class="mb-0">Chat History</h5>
                 </div>
                 <div class="chat-history overflow-auto flex-grow-1">
-                    <div class="list-group list-group-flush">
-                        <a href="#" class="list-group-item list-group-item-action active">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">General Chat</h6>
-                                <small>3 mins ago</small>
-                            </div>
-                            <p class="mb-1">Last message preview...</p>
-                        </a>
+                    <div class="list-group list-group-flush" id="conversation-list">
+                        <!-- Conversations will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -30,19 +24,20 @@
             <!-- Chat Header -->
             <div class="p-3 border-bottom">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Welcome, {{ username }}!</h5>
-                    <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+                    <div>
+                        <h5 class="mb-0">Welcome, {{ username }}!</h5>
+                        <small class="text-muted">Choose your chat mode:</small>
+                    </div>
+                    <div>
+                        <a href="/chat" class="btn btn-primary me-2">AI Chat</a>
+                        <a href="/logout" class="btn btn-danger">Logout</a>
+                    </div>
                 </div>
             </div>
 
             <!-- Messages Area -->
-            <div class="chat-messages p-3 overflow-auto flex-grow-1">
-                <!-- System Message -->
-                <div class="message system-message mb-3">
-                    <div class="message-content">
-                        <p class="mb-0">Welcome to Tako Chat! How can I help you today?</p>
-                    </div>
-                </div>
+            <div class="chat-messages p-3 overflow-auto flex-grow-1" id="messages-area">
+                <!-- Messages will be loaded here -->
             </div>
 
             <!-- Input Area -->
@@ -166,95 +161,245 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 <script>
-document.getElementById('chat-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const input = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const message = input.value.trim();
-    
-    if (message) {
-        // Disable input and show loading state
-        input.disabled = true;
-        sendButton.disabled = true;
-        sendButton.innerHTML = '<div class="loading"></div> Processing...';
+let currentConversationId = null;
+
+// Load conversations
+async function loadConversations() {
+    try {
+        const response = await fetch('/api/conversations');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const conversations = await response.json();
+        const conversationList = document.getElementById('conversation-list');
+        conversationList.innerHTML = '';
         
-        // Add user message to chat
-        const messagesArea = document.querySelector('.chat-messages');
-        const userMessage = document.createElement('div');
-        userMessage.className = 'message user-message mb-3';
-        userMessage.innerHTML = `
-            <div class="message-content">
-                <p class="mb-0">${message}</p>
+        if (conversations.length === 0) {
+            conversationList.innerHTML = `
+                <div class="text-center text-muted p-3">
+                    No conversations yet. Start a new chat!
+                </div>
+            `;
+            return;
+        }
+        
+        conversations.forEach(conv => {
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'list-group-item list-group-item-action';
+            item.setAttribute('data-conversation-id', conv.id);
+            item.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${conv.title || 'New Conversation'}</h6>
+                    <small>${new Date(conv.updated_at).toLocaleString()}</small>
+                </div>
+                <p class="mb-1 text-muted">Last message preview...</p>
+            `;
+            item.onclick = (e) => {
+                e.preventDefault();
+                loadConversation(conv.id);
+            };
+            conversationList.appendChild(item);
+        });
+    } catch (error) {
+        console.error('Error loading conversations:', error);
+        const conversationList = document.getElementById('conversation-list');
+        conversationList.innerHTML = `
+            <div class="text-center text-danger p-3">
+                Error loading conversations. Please try refreshing the page.
             </div>
         `;
-        messagesArea.appendChild(userMessage);
-        
-        // Clear input
-        input.value = '';
-        
-        try {
-            // Send message to backend
-            const response = await fetch('/ask', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ question: message })
-            });
-            
-            const data = await response.json();
-            
-            // Add bot response to chat
-            const botMessage = document.createElement('div');
-            botMessage.className = 'message bot-message mb-3';
-            
-            let sourcesHtml = '';
-            if (data.sources) {
-                // If sources is a string, split by newlines and dashes
-                let sourcesList = [];
-                if (typeof data.sources === 'string') {
-                    sourcesList = data.sources
-                        .replace(/^Sources:/, '')
-                        .split('\n')
-                        .map(line => line.replace(/^- /, '').trim())
-                        .filter(line => line.length > 0);
-                } else if (Array.isArray(data.sources)) {
-                    sourcesList = data.sources;
-                }
-                if (sourcesList.length > 0) {
-                    sourcesHtml = `<div class="sources-title"><b>Sources:</b></div><ul class="sources-list">` +
-                        sourcesList.map(src => `<li>${src}</li>`).join('') +
-                        `</ul>`;
-                }
-            }
+    }
+}
 
-            botMessage.innerHTML = `
-                <div class="message-content">
-                    <p class="mb-0">${data.answer}</p>
-                    ${sourcesHtml}
-                </div>
-            `;
-            messagesArea.appendChild(botMessage);
-        } catch (error) {
-            // Add error message
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'message system-message mb-3';
-            errorMessage.innerHTML = `
-                <div class="message-content">
-                    <p class="mb-0">Sorry, there was an error processing your request. Please try again.</p>
-                </div>
-            `;
-            messagesArea.appendChild(errorMessage);
-        } finally {
-            // Re-enable input and reset button
-            input.disabled = false;
-            sendButton.disabled = false;
-            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+// Load conversation messages
+async function loadConversation(conversationId) {
+    try {
+        currentConversationId = conversationId;
+        const response = await fetch(`/api/conversations/${conversationId}/messages`);
+        const messages = await response.json();
+        const messagesArea = document.getElementById('messages-area');
+        messagesArea.innerHTML = '';
+        
+        messages.forEach(message => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.role}-message mb-3`;
             
-            // Scroll to bottom
-            messagesArea.scrollTop = messagesArea.scrollHeight;
+            let contentHtml = message.content;
+            
+            // Convert markdown-style formatting to HTML
+            contentHtml = contentHtml
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/\n/g, '<br>');  // Line breaks
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${contentHtml}
+                </div>
+            `;
+            messagesArea.appendChild(messageDiv);
+        });
+        
+        // Scroll to bottom
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        
+        // Update active conversation in sidebar
+        document.querySelectorAll('#conversation-list .list-group-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-conversation-id') === conversationId.toString()) {
+                item.classList.add('active');
+            }
+        });
+    } catch (error) {
+        console.error('Error loading conversation:', error);
+    }
+}
+
+function addConversationToSidebar(conversation) {
+    const sidebar = document.getElementById('conversation-list');
+    const conversationItem = document.createElement('a');
+    conversationItem.href = '#';
+    conversationItem.className = 'list-group-item list-group-item-action';
+    conversationItem.setAttribute('data-conversation-id', conversation.id);
+    conversationItem.onclick = () => loadConversation(conversation.id);
+    
+    // Create title element
+    const title = document.createElement('div');
+    title.className = 'd-flex w-100 justify-content-between';
+    
+    const titleText = document.createElement('h6');
+    titleText.className = 'mb-1';
+    titleText.textContent = conversation.title || 'New Conversation';
+    
+    // Create date element
+    const date = document.createElement('small');
+    date.className = 'text-muted';
+    date.textContent = new Date(conversation.updated_at).toLocaleString();
+    
+    // Add elements to conversation item
+    title.appendChild(titleText);
+    title.appendChild(date);
+    
+    conversationItem.appendChild(title);
+    
+    // Add to sidebar at the top
+    sidebar.insertBefore(conversationItem, sidebar.firstChild);
+    
+    // Update active conversation
+    document.querySelectorAll('.list-group-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    conversationItem.classList.add('active');
+}
+
+// Handle form submission
+document.getElementById('chat-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    console.log('Sending message:', message);
+
+    // Add user message to chat
+    addMessageToChat('user', message);
+    messageInput.value = '';
+
+    try {
+        const formData = new FormData();
+        formData.append('message', message);
+        if (currentConversationId) {
+            formData.append('conversation_id', currentConversationId);
         }
+
+        console.log('Sending request to /api/chat...');
+
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Raw server response:', data);
+        
+        // Update active conversation if this is a new one
+        if (!currentConversationId) {
+            currentConversationId = data.conversation_id;
+            console.log('New conversation ID:', currentConversationId);
+            // Add the new conversation to the sidebar
+            const conversation = {
+                id: data.conversation_id,
+                title: "New Conversation",
+                updated_at: new Date().toISOString()
+            };
+            addConversationToSidebar(conversation);
+        }
+
+        // Extract message content from LangChain message object
+        let formattedMessage = '';
+        if (data.message) {
+            if (typeof data.message === 'string') {
+                formattedMessage = data.message;
+            } else if (data.message.content) {
+                formattedMessage = data.message.content;
+            } else {
+                console.error('Unexpected message format:', data.message);
+                formattedMessage = 'Error: Unexpected message format from server';
+            }
+        }
+
+        console.log('Extracted message content:', formattedMessage);
+
+        // Add sources if available
+        if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
+            console.log('Adding sources:', data.sources);
+            formattedMessage += "\n\n**Sources:**\n";
+            data.sources.forEach((source, index) => {
+                formattedMessage += `${index + 1}. ${source}\n`;
+            });
+        }
+
+        console.log('Final message to display:', formattedMessage);
+        addMessageToChat('assistant', formattedMessage);
+
+    } catch (error) {
+        console.error('Error sending message:', error);
+        console.error('Error details:', error.message);
+        addMessageToChat('assistant', 'Sorry, there was an error processing your message. Please try again.');
     }
 });
+
+function addMessageToChat(role, content) {
+    const messagesDiv = document.getElementById('messages-area');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}-message mb-3`;
+    
+    // Ensure content is a string
+    let formattedContent = String(content || '');
+    
+    // Format the message content
+    if (role === 'assistant') {
+        // Convert markdown-style formatting
+        formattedContent = formattedContent
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+            .replace(/\n/g, '<br>');  // Line breaks
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            ${formattedContent}
+        </div>
+    `;
+    
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Load conversations when page loads
+document.addEventListener('DOMContentLoaded', loadConversations);
 </script>
 {% endblock %} 

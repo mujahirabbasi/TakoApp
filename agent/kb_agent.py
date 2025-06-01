@@ -98,15 +98,19 @@ def initialize_embeddings():
         all_docs.extend(chunks)
     current_hash = compute_document_hash(all_docs)
     saved_hash = load_document_hash()
+    
+    print(f"[DEBUG] Current document hash: {current_hash}")
+    print(f"[DEBUG] Saved document hash: {saved_hash}")
+    print(f"[DEBUG] Hashes match: {current_hash == saved_hash}")
 
-    if os.path.exists(os.path.join(db_dir, "chroma.sqlite3")) and current_hash == saved_hash:
+    if current_hash == saved_hash:
         print("Loading existing vectorstore from database...")
         return Chroma(
             persist_directory=db_dir,
             embedding_function=embedding
         )
     else:
-        print("No existing database found or documents changed. Computing embeddings...")
+        print("Documents changed. Computing embeddings...")
         vectorstore = compute_and_store_embeddings()
         save_document_hash(current_hash)
         return vectorstore
@@ -152,63 +156,10 @@ def create_web_search_tool():
 
 # ===== Question Routing =====
 
-def validate_document_sources(docs, question):
-    """Filter out irrelevant documents based on question context."""
-    q = question.lower()
-    valid_sources = {
-        'employment': ['labor_rules.md', 'hr_manual.md'],
-        'product': ['product_usage_manual.md'],
-        'hr': ['hr_manual.md']
-    }
-    
-    # Determine question type
-    if any(word in q for word in ['labor', 'employment', 'work', 'employee', 'law', 'legal']):
-        valid_files = valid_sources['employment']
-        print(f"🔍 Question type: Employment/Labor - Valid files: {valid_files}")
-    elif any(word in q for word in ['product', 'board', 'hardware', 'setup']):
-        valid_files = valid_sources['product']
-        print(f"🔍 Question type: Product - Valid files: {valid_files}")
-    elif any(word in q for word in ['hr', 'policy', 'workplace']):
-        valid_files = valid_sources['hr']
-        print(f"🔍 Question type: HR - Valid files: {valid_files}")
-    else:
-        valid_files = [f for files in valid_sources.values() for f in files]
-        print(f"🔍 Question type: General - Valid files: {valid_files}")
-    
-    # Filter documents and sort by relevance
-    filtered_docs = [doc for doc in docs if doc.metadata.get('source') in valid_files]
-    print(f"📚 Documents after source filtering: {len(filtered_docs)}")
-    
-    # Additional relevance check based on section headers
-    if filtered_docs:
-        # First, check for exact header matches
-        exact_matches = []
-        partial_matches = []
-        question_words = set(q.split())
-        
-        for doc in filtered_docs:
-            header = doc.metadata.get('header', '').lower()
-            # Check for exact header match
-            if header == q:
-                exact_matches.append(doc)
-                print(f"✅ Exact header match found: {header}")
-            # Check for partial matches
-            elif any(word in header for word in question_words):
-                partial_matches.append(doc)
-                print(f"✅ Partial header match found: {header}")
-        
-        # Combine matches with exact matches first
-        filtered_docs = exact_matches + partial_matches + [doc for doc in filtered_docs if doc not in exact_matches and doc not in partial_matches]
-        print(f"📚 Documents after header matching: {len(filtered_docs)}")
-    
-    return filtered_docs
-
 def route_question(question, retriever):
     """Decide which tool to use based on document relevance and keywords."""
     q = question.lower()
     relevant_docs = retriever.invoke(question)
-    # Filter out irrelevant documents
-    relevant_docs = validate_document_sources(relevant_docs, question)
     has_relevant_docs = len(relevant_docs) > 0
     has_doc_keywords = any(keyword in q for keyword in ALL_DOCUMENT_KEYWORDS)
     needs_current_info = any(word in q for word in ["current", "latest", "today", "real-time", "now"])
@@ -234,13 +185,9 @@ def run_custom_agent(question, tools, llm, retriever):
 
     if tool_choice == "Document Retriever":
         try:
-            # Get relevant documents first
+            # Get relevant documents
             relevant_docs = retriever.invoke(question)
-            print(f"\n📚 Retrieved {len(relevant_docs)} documents initially")
-            
-            # Filter out irrelevant documents
-            relevant_docs = validate_document_sources(relevant_docs, question)
-            print(f"📚 After filtering: {len(relevant_docs)} documents")
+            print(f"\n📚 Retrieved {len(relevant_docs)} documents")
             
             # Sort documents by relevance to question
             relevant_docs.sort(key=lambda x: len(set(question.lower().split()) & 
@@ -257,21 +204,32 @@ def run_custom_agent(question, tools, llm, retriever):
             answer = tools[0].func(question)
             
             # Format answer with sources
-            formatted_response = format_answer_with_sources(answer, relevant_docs)
-            return formatted_response
+            return format_answer_with_sources(answer, relevant_docs)
         except Exception as e:
             print("Document retrieval failed, falling back to LLM...")
-            return llm.invoke(question)
+            return {
+                "answer": llm.invoke(question),
+                "sources": []
+            }
     
     if tool_choice == "Final Answer":
         try:
-            return llm.invoke(question)
+            return {
+                "answer": llm.invoke(question),
+                "sources": []
+            }
         except Exception as e:
             print("LLM generation failed, falling back to web...")
-            return tools[1].func(question)
+            return {
+                "answer": tools[1].func(question),
+                "sources": ["Web Search"]
+            }
 
     if tool_choice == "Web Search":
-        return tools[1].func(question)
+        return {
+            "answer": tools[1].func(question),
+            "sources": ["Web Search"]
+        }
 
 # ===== Main Execution =====
 
@@ -335,10 +293,14 @@ def format_answer_with_sources(answer, docs):
         answer_text = answer
 
     # Get source information as a list
-    sources = [
-        f"{doc.metadata.get('source')}: {doc.metadata.get('header')}"
-        for doc in docs
-    ]
+    sources = []
+    for doc in docs:
+        source = doc.metadata.get('source', '')
+        header = doc.metadata.get('header', '')
+        if source and header:
+            sources.append(f"{source}: {header}")
+        elif source:
+            sources.append(source)
 
     return {
         "answer": answer_text,
