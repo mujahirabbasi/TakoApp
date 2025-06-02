@@ -1,11 +1,7 @@
-# Environment variables
-/app/.env
-
 # Python
 __pycache__/
 
 # Logs
-
 *.log
 
 # Local development

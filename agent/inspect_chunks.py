@@ -13,7 +13,7 @@ def inspect_chunks(show_content=True, show_metadata=True, source_filter=None):
     """Inspect chunks stored in the Chroma database and save to file."""
     print("\n🔍 Inspecting Chroma database...")
     
-    db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../db")
+    db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db")
     db_dir = os.path.abspath(db_dir)
     # Check if database exists
     if not os.path.exists(os.path.join(db_dir, "chroma.sqlite3")):
@@ -86,13 +86,15 @@ def inspect_chunks(show_content=True, show_metadata=True, source_filter=None):
         return
     
     # Create output directory if it doesn't exist
-    os.makedirs("chunks_inspection", exist_ok=True)
+    inspection_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chunks_inspection")
+    os.makedirs(inspection_dir, exist_ok=True)
     
     # Generate filename with timestamp
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"chunks_inspection/chunks_{timestamp}.txt"
+    filename = f"chunks_{timestamp}.txt"
     if source_filter:
-        filename = f"chunks_inspection/chunks_{source_filter}_{timestamp}.txt"
+        filename = f"chunks_{source_filter}_{timestamp}.txt"
+    filename = os.path.join(inspection_dir, filename)
     
     # Write to file
     with open(filename, 'w', encoding='utf-8') as f:

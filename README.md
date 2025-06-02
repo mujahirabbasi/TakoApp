@@ -256,3 +256,23 @@ This project provides a `setup.py` script to automate the environment setup proc
 4. Follow the on-screen instructions to complete the setup process.
 
 After the setup is complete, activate the virtual environment and start the application as described in the main instructions above.
+
+## Inspecting Document Chunks
+
+The project includes a script, `agent/inspect_chunks.py`, which allows you to inspect how your documentation is split into chunks and stored in the Chroma vector database. This is useful for debugging, understanding retrieval, and ensuring your documents are chunked as expected.
+
+### How to use the chunk inspection script
+
+- To inspect all chunks:
+  ```sh
+  python agent/inspect_chunks.py
+  ```
+- To inspect chunks for a specific document (e.g., `hr_manual.md`):
+  ```sh
+  python agent/inspect_chunks.py --source hr_manual.md
+  ```
+- Inspection reports are saved in the `agent/chunks_inspection/` folder.
+
+## Note on Environment File
+
+A pre-configured `.env` file is included in the repository for your convenience. You do **not** need to create or generate a `.env` file manually; simply use the one provided. This allows reviewers and users to run the application with minimal setup effort.

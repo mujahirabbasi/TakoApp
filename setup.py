@@ -6,7 +6,6 @@ This script automates the setup of the TakoApp environment for Windows users, in
 - Dependencies installation
 - MySQL installation and configuration
 - Ollama installation and model setup
-- Environment file configuration
 """
 
 import os
@@ -18,6 +17,16 @@ from pathlib import Path
 import mysql.connector
 from mysql.connector import Error
 import webbrowser
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+DB_USER = os.getenv("DB_USER") or os.getenv("DATABASE_USER") or os.getenv("MYSQL_USER") or "root"
+DB_PASSWORD = os.getenv("DB_PASSWORD") or os.getenv("DATABASE_PASSWORD") or os.getenv("MYSQL_PASSWORD")
+DB_HOST = os.getenv("DB_HOST") or os.getenv("DATABASE_HOST") or "localhost"
+DB_NAME = os.getenv("DB_NAME") or os.getenv("DATABASE_NAME") or "takoapp"
 
 def print_step(message):
     """Print a formatted step message."""
@@ -81,12 +90,12 @@ def create_database():
     print_step("Creating application database...")
     try:
         connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password=input("Enter MySQL root password: ")
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD
         )
         cursor = connection.cursor()
-        cursor.execute("CREATE DATABASE IF NOT EXISTS takoapp")
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
         print("Database created successfully")
     except Error as e:
         print(f"Error creating database: {e}")
@@ -110,26 +119,16 @@ def setup_ollama():
     run_command("ollama pull llama2", shell=True)
     print("Ollama setup completed")
 
-def create_env_file():
-    """Create .env file with necessary configurations."""
-    print_step("Creating .env file...")
-    env_content = f"""
-DATABASE_URL=mysql://root:{input('Enter MySQL root password: ')}@localhost/takoapp
-"""
-    with open(".env", "w") as f:
-        f.write(env_content.strip())
-    print(".env file created successfully")
-
 def verify_setup():
     """Verify the setup by running basic checks."""
     print_step("Verifying setup...")
     # Check database connection
     try:
         connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password=input("Enter MySQL root password: "),
-            database="takoapp"
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
         )
         print("✅ Database connection successful")
         connection.close()
@@ -158,7 +157,6 @@ def main():
     setup_mysql()
     create_database()
     setup_ollama()
-    create_env_file()
     verify_setup()
     print_step("Setup completed successfully!")
     print("""
