@@ -3,7 +3,6 @@ Utility functions for computing and storing document embeddings.
 """
 import os
 import re
-from pathlib import Path
 from langchain.schema import Document
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -64,6 +63,3 @@ def compute_and_store_embeddings(embedding_model="llama2"):
     save_document_hash(current_hash)
 
     return vectorstore
-
-if __name__ == "__main__":
-    compute_and_store_embeddings()

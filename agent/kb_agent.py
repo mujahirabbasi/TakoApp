@@ -4,33 +4,24 @@ Knowledge Base Agent - A tool for answering questions using document embeddings 
 
 # Standard library imports
 import os
-import sys
-import time
-import json
 import certifi
 
 # Third-party imports
 from dotenv import load_dotenv
-from langchain_community.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_models import ChatOllama
-from langchain.agents import Tool, initialize_agent, AgentType
+from langchain.agents import Tool
 from langchain.chains import RetrievalQA
 from langchain_community.tools import DuckDuckGoSearchRun
-from langchain.tools import BaseTool
-from langchain.agents import AgentExecutor, AgentOutputParser
-from langchain.schema import AgentAction, AgentFinish, Document
-from tabulate import tabulate
-
 # Local imports
 from agent.utils import (
     compute_and_store_embeddings,
     wait_for_ollama,
     check_and_pull_model
 )
+from agent.utils.compute_embeddings import split_markdown_sections
+from agent.utils.hash_utils import compute_document_hash, load_document_hash, save_document_hash
 
 # ===== Configuration =====
 
@@ -82,9 +73,6 @@ def initialize_embeddings():
     db_dir = os.path.abspath(db_dir)
     docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
     docs_dir = os.path.abspath(docs_dir)
-
-    from agent.utils.compute_embeddings import split_markdown_sections
-    from agent.utils.hash_utils import compute_document_hash, load_document_hash, save_document_hash
 
     # Compute current hash
     markdown_files = [f for f in os.listdir(docs_dir) if f.endswith(".md")]

@@ -2,12 +2,9 @@ from fastapi import FastAPI, Request, Form, HTTPException, Depends, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from passlib.context import CryptContext
-import secrets
 from typing import Optional
 from pydantic import BaseModel
-import uvicorn
 from sqlalchemy.orm import Session
 from agent.kb_agent import run_custom_agent, initialize_ollama, initialize_embeddings, create_retriever_tool, create_web_search_tool
 from langchain_community.chat_models import ChatOllama
@@ -16,15 +13,11 @@ from app.database import get_db, engine
 from app.models.user import User, Base
 from app.routers import auth, chat
 from app.auth.auth import get_current_user
-import os
-import openai
 from pathlib import Path
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
 
-
 app = FastAPI()
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -42,13 +35,8 @@ app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBasic()
-
-# Set OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class Question(BaseModel):
     question: str

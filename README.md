@@ -233,3 +233,26 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [LangChain](https://python.langchain.com/)
 - [Ollama](https://ollama.ai/)
 - [ChromaDB](https://www.trychroma.com/)
+
+## Automated Environment Setup (Windows Only)
+
+This project provides a `setup.py` script to automate the environment setup process for Windows users. The script will:
+- Set up a Python virtual environment
+- Install all required dependencies
+- Guide you through installing MySQL and MySQL Workbench
+- Guide you through installing Ollama and pulling the llama2 model
+- Create the application database
+- Generate a `.env` file with the correct database connection string
+- Verify the setup
+
+### How to use the setup script
+
+1. Make sure you have Python 3.10.16 installed on your system.
+2. Open a terminal (Command Prompt or PowerShell) in the project root directory.
+3. Run the setup script:
+   ```sh
+   python setup.py
+   ```
+4. Follow the on-screen instructions to complete the setup process.
+
+After the setup is complete, activate the virtual environment and start the application as described in the main instructions above.

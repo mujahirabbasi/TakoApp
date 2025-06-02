@@ -4,7 +4,6 @@ Utility functions for document hash computation and management.
 
 import os
 import hashlib
-from langchain.schema import Document
 
 def compute_document_hash(documents):
     """Compute a hash of document contents to check if they've changed."""
