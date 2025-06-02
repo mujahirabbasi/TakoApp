@@ -125,6 +125,7 @@ async def chat(
         try:
             if isinstance(response, dict):
                 # Extract content from dictionary response
+            
                 if 'answer' in response:
                     answer_obj = response['answer']
                     if hasattr(answer_obj, 'content'):

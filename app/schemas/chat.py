@@ -2,10 +2,15 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
 
+class Source(BaseModel):
+    source: Optional[str] = None
+    header: Optional[str] = None
+    content: Optional[str] = None
+
 class MessageBase(BaseModel):
     role: str
     content: str
-    sources: Optional[List[str]] = None
+    sources: Optional[List[Source]] = None
 
 class MessageCreate(MessageBase):
     pass
@@ -20,7 +25,7 @@ class Message(MessageBase):
         from_attributes = True
 
 class ConversationBase(BaseModel):
-    title: str = "New Conversation"  # Default title if none is provided
+    title: Optional[str] = None
 
 class ConversationCreate(ConversationBase):
     pass

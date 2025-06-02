@@ -78,7 +78,7 @@ def initialize_ollama():
 def initialize_embeddings():
     """Initialize or load the vector store, only recompute if docs changed."""
     embedding = OllamaEmbeddings(model="llama2")
-    db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../db")
+    db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db")
     db_dir = os.path.abspath(db_dir)
     docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
     docs_dir = os.path.abspath(docs_dir)
@@ -159,15 +159,12 @@ def route_question(question, retriever):
 
     if has_relevant_docs:
         if has_doc_keywords:
-            pass
+            return "Document Retriever", relevant_docs
         else:
-            pass
-        return "Document Retriever", relevant_docs
-    
+            return "Document Retriever", relevant_docs
     if needs_current_info:
-        return "Web Search", []
-    
-    return "Final Answer", []
+        return "Web Search", relevant_docs
+    return "Final Answer", relevant_docs
 
 def run_custom_agent(question, tools, llm, retriever):
     """Run the appropriate tool based on the question routing."""
@@ -176,7 +173,7 @@ def run_custom_agent(question, tools, llm, retriever):
     if tool_choice == "Document Retriever":
         try:
             # Get relevant documents
-            relevant_docs = retriever.invoke(question)
+            # relevant_docs = retriever.invoke(question)
             # Sort documents by relevance to question
             relevant_docs.sort(key=lambda x: len(set(question.lower().split()) & 
                                                 set(x.metadata.get('header', '').lower().split())), 
@@ -209,76 +206,28 @@ def run_custom_agent(question, tools, llm, retriever):
             "sources": ["Web Search"]
         }
 
-# ===== Main Execution =====
-
-def main():
-    """Main execution function."""
-    # Initialize Ollama
-    initialize_ollama()
-
-    # Initialize vector store and retriever
-    vectorstore = initialize_embeddings()
-    retriever = vectorstore.as_retriever(
-        search_kwargs={
-            "k": 10  # Increased from 3 to 10 to get more potential matches
-        }
-    )
-
-    # Initialize LLM and retrieval chain
-    llm = ChatOllama(model="llama2", temperature=0)
-    retrieval_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-
-    # Create tools
-    retriever_tool = create_retriever_tool(retrieval_chain)
-    web_search_tool = create_web_search_tool()
-    tools = [retriever_tool, web_search_tool]
-
-    # Create agent
-    agent = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=False,
-        max_iterations=5,
-        early_stopping_method="generate",
-        handle_parsing_errors=True
-    )
-
-    while True:
-        question = input("\nAsk a question or enter a command: ")
-        
-        if question.lower() == "exit":
-            break
-        else:
-            try:
-                response = run_custom_agent(question, tools, llm, retriever)
-                print("\n📘 Answer:", response)
-            except Exception as e:
-                print(f"\n❌ Error: {str(e)}")
-                print("Please try rephrasing your question in natural language.")
-
 def format_answer_with_sources(answer, docs):
-    """Format the answer to show which parts came from which sources."""
+    """Format the answer to show which parts came from which sources (top-k matched chunks)."""
     # If answer is a dictionary, extract the result
     if isinstance(answer, dict) and 'result' in answer:
         answer_text = answer['result']
     else:
         answer_text = answer
 
-    # Get source information as a list
+    # Get source information as a list of dicts with only file and section (header)
     sources = []
     for doc in docs:
         source = doc.metadata.get('source', '')
         header = doc.metadata.get('header', '')
-        if source and header:
-            sources.append(f"{source}: {header}")
-        elif source:
-            sources.append(source)
+        # Remove markdown header prefix if present (e.g., '## ')
+        if header.startswith('## '):
+            header = header[3:].strip()
+        sources.append({
+            "source": source,
+            "header": header
+        })
 
     return {
         "answer": answer_text,
         "sources": sources
     }
-
-if __name__ == "__main__":
-    main()

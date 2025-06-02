@@ -367,10 +367,16 @@ chatForm.addEventListener('submit', async function(e) {
             }
         }
         if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
-            formattedMessage += "\n\n**Sources:**\n";
+            formattedMessage += `<div class="sources-title">Sources (Top Chunks):</div><ul class="sources-list">`;
             data.sources.forEach((source, index) => {
-                formattedMessage += `${index + 1}. ${source}\n`;
+                if (typeof source === 'object' && source !== null) {
+                    formattedMessage += `<li><strong>File:</strong> ${source.source || 'N/A'}<br>` +
+                        `<strong>Section:</strong> ${source.header || 'N/A'}</li>`;
+                } else {
+                    formattedMessage += `<li>${source}</li>`;
+                }
             });
+            formattedMessage += `</ul>`;
         }
         const genMsg = document.getElementById(generatingMsgId);
         if (genMsg) genMsg.remove();
