@@ -252,3 +252,7 @@ The project includes a script, `agent/inspect_chunks.py`, which allows you to in
 ## Note on Environment File
 
 A pre-configured `.env` file is included in the repository for your convenience. You do **not** need to create or generate a `.env` file manually; simply use the one provided. This allows reviewers and users to run the application with minimal setup effort.
+
+## ℹ️ Additional Note
+
+- ChatGPT and Cursor have been used for this application.

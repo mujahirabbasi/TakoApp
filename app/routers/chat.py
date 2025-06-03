@@ -7,32 +7,17 @@ from app.models.chat import Conversation, Message
 from app.schemas.chat import ChatRequest, Conversation as ConversationSchema, Message as MessageSchema
 from app.auth.auth import get_current_user
 from app.models.user import User
-from agent.kb_agent import run_custom_agent, initialize_ollama, initialize_embeddings, create_retriever_tool, create_web_search_tool
+from agent.kb_agent import run_custom_agent
 from langchain.chains import RetrievalQA
 from datetime import datetime
 from starlette.middleware.sessions import SessionMiddleware
+from app.shared import tools, llm, retriever  # Import from shared module
 
 router = APIRouter()
-
-# Initialize KB Agent components
-try:
-    initialize_ollama()
-    vectorstore = initialize_embeddings()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
-    llm = ChatOllama(model="llama2", temperature=0)
-    retrieval_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-    retriever_tool = create_retriever_tool(retrieval_chain)
-    web_search_tool = create_web_search_tool()
-    tools = [retriever_tool, web_search_tool]
-except Exception as e:
-    tools = None
-    llm = None
-    retriever = None
 
 def generate_title(message: str) -> str:
     """Generate a title for the conversation using Ollama."""
     try:
-        llm = ChatOllama(model="llama2", temperature=0)
         prompt = f"""Generate a short, concise title (max 5 words) for this conversation based on the first message.
         Message: {message}
         Title:"""
