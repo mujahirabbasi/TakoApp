@@ -137,7 +137,7 @@ CREATE TABLE messages (
 
 ## 📋 Prerequisites
 
-- Python 3.8+
+- Python 3.10.16
 - MySQL Server
 - [Ollama](https://ollama.ai/) installed and running
 - Git
@@ -150,10 +150,10 @@ CREATE TABLE messages (
    cd takoapp
    ```
 
-2. **Create and activate virtual environment**
+2. **Create and activate a conda virtual environment (Python 3.10.16)**
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   conda create -n takoapp_env python=3.10.16
+   conda activate takoapp_env
    ```
 
 3. **Install dependencies**
@@ -161,22 +161,21 @@ CREATE TABLE messages (
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**
-   Create a `.env` file in the root directory with:
-   ```
-   DATABASE_URL=mysql://user:password@localhost/takoapp
-   SECRET_KEY=your-secret-key
-   ```
+4. **Download and install MySQL Server and MySQL Workbench**
+   - Download MySQL Server: https://dev.mysql.com/downloads/installer/
+   - Download MySQL Workbench: https://dev.mysql.com/downloads/workbench/
+   - Install both using the installers and make sure MySQL Server is running.
 
-5. **Initialize the database**
-   ```bash
-   python -c "from app.database import Base, engine; Base.metadata.create_all(bind=engine)"
-   ```
+5. **.env file**
+   - A pre-configured `.env` file is already included in the repository. You do not need to create or modify it. The application will use this file for database and other configuration settings.
 
 6. **Start Ollama**
-   - Install Ollama from https://ollama.ai/download
+   - Download and install Ollama from https://ollama.ai/download
    - Start the Ollama service
-   - Pull the llama2 model: `ollama pull llama2`
+   - Pull the llama2 model:
+     ```bash
+     ollama pull llama2
+     ```
 
 ## 🏃‍♂️ Running the Application
 
@@ -233,29 +232,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [LangChain](https://python.langchain.com/)
 - [Ollama](https://ollama.ai/)
 - [ChromaDB](https://www.trychroma.com/)
-
-## Automated Environment Setup (Windows Only)
-
-This project provides a `setup.py` script to automate the environment setup process for Windows users. The script will:
-- Set up a Python virtual environment
-- Install all required dependencies
-- Guide you through installing MySQL and MySQL Workbench
-- Guide you through installing Ollama and pulling the llama2 model
-- Create the application database
-- Generate a `.env` file with the correct database connection string
-- Verify the setup
-
-### How to use the setup script
-
-1. Make sure you have Python 3.10.16 installed on your system.
-2. Open a terminal (Command Prompt or PowerShell) in the project root directory.
-3. Run the setup script:
-   ```sh
-   python setup.py
-   ```
-4. Follow the on-screen instructions to complete the setup process.
-
-After the setup is complete, activate the virtual environment and start the application as described in the main instructions above.
 
 ## Inspecting Document Chunks
 
