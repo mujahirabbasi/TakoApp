@@ -65,7 +65,7 @@ The system is designed to handle queries about:
 
 2. **Document Processing Flow**:
    ```
-   Markdown Docs → Text Splitter → Embeddings → ChromaDB Storage
+   Markdown Docs → Markdown Splitter → Embeddings → ChromaDB Storage
    ```
 
 3. **Query Processing Flow**:
@@ -214,25 +214,6 @@ takoapp/
 - **Ollama**: Ensure Ollama is running and llama2 model is available
 - **Documentation**: Place markdown files in `agent/docs/`
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [LangChain](https://python.langchain.com/)
-- [Ollama](https://ollama.ai/)
-- [ChromaDB](https://www.trychroma.com/)
-
 ## Inspecting Document Chunks
 
 The project includes a script, `agent/inspect_chunks.py`, which allows you to inspect how your documentation is split into chunks and stored in the Chroma vector database. This is useful for debugging, understanding retrieval, and ensuring your documents are chunked as expected.
@@ -256,3 +237,10 @@ A pre-configured `.env` file is included in the repository for your convenience.
 ## ℹ️ Additional Note
 
 - ChatGPT and Cursor have been used for this application.
+
+## 🙏 Acknowledgments
+
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [LangChain](https://python.langchain.com/)
+- [Ollama](https://ollama.ai/)
+- [ChromaDB](https://www.trychroma.com/)
